@@ -1,14 +1,46 @@
 // File:	mypthread.c
 
-// List all group member's name:
-// username of iLab:
+// List all group member's name: Gregory Diaz
+// username of iLab: gldd55
 // iLab Server:
 
 #include "mypthread.h"
-
+#include <ucontext.h>
 // INITAILIZE ALL YOUR VARIABLES HERE
 // YOUR CODE HERE
+int next_thread_id = 0002;
 
+static ucontext_t uctx_main;
+static ucontext_t schedule_context;
+char schedule_stack[32000];
+static queueNode * front;
+int schedule_created = 0;
+
+void initRunqueue(int id, tcb* tb){
+	front = (queueNode*) malloc(sizeof(queueNode));
+	front->previous = front;
+	front->next = front;
+	front->threadid = id;
+}
+
+void push(int id,tcb* tb ){
+	if(front == NULL){ handle_error("queueNULL");}
+	queueNode *newNode = (queueNode*) malloc(sizeof(queueNode));
+	newNode->currentTcb = tb;
+	newNode->threadid = id;
+	newNode->next = front;
+	newNode->previous = front->previous;
+	front->previous->next = newNode;
+	front->previous = newNode;
+}
+
+void pop(){
+	front->previous->next= front->next;
+	front->next->previous = front->previous;
+	queueNode *temp = front;
+	free(front);
+	front = temp;
+}
 
 /* create a new thread */
 int mypthread_create(mypthread_t * thread, pthread_attr_t * attr,
@@ -18,8 +50,33 @@ int mypthread_create(mypthread_t * thread, pthread_attr_t * attr,
        // allocate space of stack for this thread to run
        // after everything is all set, push this thread int
        // YOUR CODE HERE
+	tcb* newtcb = malloc(sizeof(tcb));
+	newtcb->thread_id = next_thread_id;
+	next_thread_id++;
+	newtcb->priority = 0;
+	newtcb->status = READY;
+	newtcb->context = (ucontext_t*) malloc(sizeof(ucontext_t));
+	if(getcontext(newtcb->context) == -1){ handle_error("getcontext"); }
+	newtcb->context->uc_stack.ss_sp = malloc(32000);
+	newtcb->context->uc_stack.ss_size = 32000;
+	newtcb->context->uc_link = &schedule_context;
+	makecontext(newtcb->context, function , 0);
 
-    return 0;
+	if(schedule_created){
+		schedule_created++;
+		schedule_context.uc_stack.ss_sp = &schedule_stack;
+		schedule_context.uc_stack.ss_size = 32000;
+		schedule_context.uc_link = &schedule_context;
+		makecontext(&schedule_context, schedule ,0 );
+		
+		initRunqueue(newtcb->thread_id, newtcb);
+		push(&schedule_context, 0);
+		push(&uctx_main, 1);
+
+		
+	}
+
+    return newtcb->thread_id;
 };
 
 /* give CPU possession to other user-level threads voluntarily */
@@ -55,6 +112,7 @@ int mypthread_join(mypthread_t thread, void **value_ptr) {
 int mypthread_mutex_init(mypthread_mutex_t *mutex,
                           const pthread_mutexattr_t *mutexattr) {
 	//initialize data structures for this mutex
+
 
 	// YOUR CODE HERE
 	return 0;

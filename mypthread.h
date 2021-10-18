@@ -18,20 +18,29 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <ucontext.h>
+
+#define handle_error(msg) \ 
+	do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
+
+typedef enum _thread_status{READY, RUNNING, WAITING, DELAYED, BLOCKED, FINISHED } thread_status;
 
 typedef uint mypthread_t;
 
 typedef struct threadControlBlock {
 	/* add important states in a thread control block */
-	// thread Id
-	// thread status
-	// thread context
-	// thread stack
-	// thread priority
+	int thread_id;				// thread Id
+	thread_status status;		// thread status
+	ucontext_t * context;		// thread context
+	void* stack;					// thread stack
+	int priority; 				// thread priority
 	// And more ...
 
 	// YOUR CODE HERE
 } tcb;
+
+
 
 /* mutex struct definition */
 typedef struct mypthread_mutex_t {
@@ -44,6 +53,23 @@ typedef struct mypthread_mutex_t {
 // Feel free to add your own auxiliary data structures (linked list or queue etc...)
 
 // YOUR CODE HERE
+typedef struct _queueNode{
+	struct _queueNode* previous;
+	struct _queueNode* next;
+	tcb * currentTcb;
+	int threadid;
+}	queueNode;
+
+
+
+/* new declarations */
+
+void initRunqueue(int threadid, tcb* tb);
+
+static void schedule();
+
+
+
 
 
 /* Function Declarations: */

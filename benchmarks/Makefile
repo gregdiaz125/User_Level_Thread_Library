@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -g -w
+CFLAGS = -g -w -Wall
 
 all:: parallel_cal vector_multiply external_cal test
 
@@ -14,6 +14,7 @@ external_cal:
 
 test:
 	$(CC) $(CFLAGS) -pthread -o test test.c -L../ -lmypthread
-
+hello:
+	$(CC) $(CFLAGS) ../mypthread.c ../mypthread.h -o test test.c
 clean:
 	rm -rf testcase test parallel_cal vector_multiply external_cal *.o ./record/
