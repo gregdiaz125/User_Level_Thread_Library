@@ -40,7 +40,6 @@ tcb* createNewTCB(){
 	return temp;
 }
 
-
 /* mutex struct definition */
 typedef struct mypthread_mutex_t {
 	/* add something here */
@@ -58,7 +57,6 @@ typedef struct _poolnode{
 	tcb * currentTcb;
 	int threadid;
 }	poolnode;
-
 
 
 /* new declarations */
@@ -91,8 +89,8 @@ void create_schedule_ctx(){
 
 void create_no_exit_ctx(){
 	no_exit_ctx.uc_stack.ss_sp = &no_exit_stack;
-	sno_exit.uc_stack.ss_size = 32000;
-	no_exit.uc_link = &schedule_ctx;
+	no_exit_ctx.uc_stack.ss_size = 32000;
+	no_exit_ctx.uc_link = &schedule_ctx;
 	makecontext(&no_exit_ctx, mypthread_no_exit,0);
 }
 void mypthread_no_exit();
@@ -102,17 +100,17 @@ static poolnode * front;
 
 static Queue* runQueue;
 
-enum struct _QNode{
+typedef struct _QNode{
 	tcb * tcb_ptr;
 	struct _QNode* next;
-}QNode;
+} QNode;
 
-struct _Queue{
-	struct Qnode *front, *rear;
+typedef struct _Queue{
+	QNode *front, *rear;
 }Queue;
 
 QNode* newNode(tcb* new_ptr){
-	Qnode* temp =(Qnode*)malloc(sizeof(QNode));
+	QNode* temp =(QNode*)malloc(sizeof(QNode));
 	temp->tcb_ptr;
 	temp->next = NULL;
 	return temp;
@@ -120,7 +118,8 @@ QNode* newNode(tcb* new_ptr){
 
 Queue* createQueue(){
 	Queue* q = (Queue*) malloc(sizeof(Queue));
-	q->front = q->rear = NULL;
+	q->front = NULL;
+	q->rear = NULL;
 	return q;
 }
 
@@ -132,11 +131,12 @@ void enQueue(Queue* q, tcb * new_ptr){
 		return;
 	}
 
-	q->rear->next = temp;
+	(q->rear)->next = temp;
 	q->rear = temp;
 	if (q->front == NULL)
         q->rear = NULL;
 }
+
 void deQueue(Queue * q){
 	if (q->front == NULL){
 		return;
@@ -149,10 +149,9 @@ void deQueue(Queue * q){
 	free(temp);
 }
 /* Function Declarations: */
-
 QNode* newNode(tcb* new_ptr);
 
-Queue createQueue();
+Queue* createQueue();
 
 void deQueue(Queue * q);
 
