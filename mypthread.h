@@ -19,27 +19,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ucontext.h>
-
-#define handle_error(msg) \ 
-	do { perror(msg); exit(EXIT_FAILURE); } while (0)
-
-
-typedef enum _thread_status{READY, RUNNING, WAITING, DELAYED, BLOCKED, FINISHED } thread_status;
-
-typedef uint mypthread_t;
+#include <stdatomic.h>
 
 typedef struct threadControlBlock {
 	/* add important states in a thread control block */
 	int thread_id;				// thread Id
 	thread_status status;		// thread status
 	ucontext_t * context;		// thread context
-	void* stack;					// thread stack
-	int priority; 				// thread priority
-	// And more ...
+	void * return_ptr;			// pointer to return value
 
 	// YOUR CODE HERE
 } tcb;
 
+tcb* createNewTCB(){
+	tcb* temp = (tcb*) malloc(sizeof(tcb));
+	temp->thread_id = next_thread_id;
+	next_thread_id++;
+	temp->status= READY;
+	temp->context = (ucontext_t*) malloc(sizeof(ucontext_t));
+	return temp;
+}
 
 
 /* mutex struct definition */
@@ -53,26 +52,111 @@ typedef struct mypthread_mutex_t {
 // Feel free to add your own auxiliary data structures (linked list or queue etc...)
 
 // YOUR CODE HERE
-typedef struct _queueNode{
-	struct _queueNode* previous;
-	struct _queueNode* next;
+typedef struct _poolnode{
+	struct _poolnode* previous;
+	struct _poolnode* next;
 	tcb * currentTcb;
 	int threadid;
-}	queueNode;
+}	poolnode;
 
 
 
 /* new declarations */
 
-void initRunqueue(int threadid, tcb* tb);
+#define handle_error(msg) \ 
+	do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
+typedef enum _boolean{TRUE = 1, FALSE = 0} bool;
+
+typedef enum _thread_status{READY, RUNNING, WAITING, DELAYED, BLOCKED, FINISHED } thread_status;
+
+typedef uint mypthread_t;
+
+void initqueue(int threadid, tcb* tb);
 static void schedule();
 
+static ucontext_t schedule_ctx, main_ctx, no_exit_ctx;
+static tcb main_tcb; 
+char schedule_stack[32000], no_exit_stack[32000];
+bool schedule_created = FALSE;
+bool schedule_space_lock = FALSE;
 
+void create_schedule_ctx(){
+	schedule_created++;
+	schedule_ctx.uc_stack.ss_sp = &schedule_stack;
+	schedule_ctx.uc_stack.ss_size = 32000;
+	schedule_ctx.uc_link = &schedule_ctx;
+	makecontext(&schedule_ctx, schedule ,0);
+}
 
+void create_no_exit_ctx(){
+	no_exit_ctx.uc_stack.ss_sp = &no_exit_stack;
+	sno_exit.uc_stack.ss_size = 32000;
+	no_exit.uc_link = &schedule_ctx;
+	makecontext(&no_exit_ctx, mypthread_no_exit,0);
+}
+void mypthread_no_exit();
 
+static poolnode * front;
+/*declaration and functions for the Queue */
 
+static Queue* runQueue;
+
+enum struct _QNode{
+	tcb * tcb_ptr;
+	struct _QNode* next;
+}QNode;
+
+struct _Queue{
+	struct Qnode *front, *rear;
+}Queue;
+
+QNode* newNode(tcb* new_ptr){
+	Qnode* temp =(Qnode*)malloc(sizeof(QNode));
+	temp->tcb_ptr;
+	temp->next = NULL;
+	return temp;
+}
+
+Queue* createQueue(){
+	Queue* q = (Queue*) malloc(sizeof(Queue));
+	q->front = q->rear = NULL;
+	return q;
+}
+
+void enQueue(Queue* q, tcb * new_ptr){
+	QNode* temp = newNode(new_ptr);
+	if(q->rear == NULL){
+		q->front = temp;
+		q->rear = temp;
+		return;
+	}
+
+	q->rear->next = temp;
+	q->rear = temp;
+	if (q->front == NULL)
+        q->rear = NULL;
+}
+void deQueue(Queue * q){
+	if (q->front == NULL){
+		return;
+	}
+	QNode* temp = q->front;
+	q->front = q->front->next;
+	if (q->front == NULL){
+        q->rear = NULL;
+	}
+	free(temp);
+}
 /* Function Declarations: */
+
+QNode* newNode(tcb* new_ptr);
+
+Queue createQueue();
+
+void deQueue(Queue * q);
+
+void enQueue(Queue* q, tcb * new_ptr);
 
 /* create a new thread */
 int mypthread_create(mypthread_t * thread, pthread_attr_t * attr, void

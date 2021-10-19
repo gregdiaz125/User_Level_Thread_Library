@@ -18,6 +18,7 @@ void test1(){
 void test2(int * a){
 	printf("\n the integer is %d\n",a);
 }
+
 int main(int argc, char **argv) {
 	int a = 5;
 	pthread_t *thread = (pthread_t*) malloc(sizeof(mypthread_t));

@@ -10,72 +10,32 @@
 // YOUR CODE HERE
 int next_thread_id = 0002;
 
-static ucontext_t uctx_main;
-static ucontext_t schedule_context;
-char schedule_stack[32000];
-static queueNode * front;
-int schedule_created = 0;
 
-void initRunqueue(int id, tcb* tb){
-	front = (queueNode*) malloc(sizeof(queueNode));
-	front->previous = front;
-	front->next = front;
-	front->threadid = id;
-}
-
-void push(int id,tcb* tb ){
-	if(front == NULL){ handle_error("queueNULL");}
-	queueNode *newNode = (queueNode*) malloc(sizeof(queueNode));
-	newNode->currentTcb = tb;
-	newNode->threadid = id;
-	newNode->next = front;
-	newNode->previous = front->previous;
-	front->previous->next = newNode;
-	front->previous = newNode;
-}
-
-void pop(){
-	front->previous->next= front->next;
-	front->next->previous = front->previous;
-	queueNode *temp = front;
-	free(front);
-	front = temp;
-}
 
 /* create a new thread */
 int mypthread_create(mypthread_t * thread, pthread_attr_t * attr,
                       void *(*function)(void*), void * arg) {
-       // create Thread Control Block
-       // create and initialize the context of this thread
-       // allocate space of stack for this thread to run
-       // after everything is all set, push this thread int
-       // YOUR CODE HERE
-	tcb* newtcb = malloc(sizeof(tcb));
-	newtcb->thread_id = next_thread_id;
-	next_thread_id++;
-	newtcb->priority = 0;
-	newtcb->status = READY;
-	newtcb->context = (ucontext_t*) malloc(sizeof(ucontext_t));
+	schedule_space_lock = TRUE;
+	tcb* newtcb = createNewTCB;
 	if(getcontext(newtcb->context) == -1){ handle_error("getcontext"); }
 	newtcb->context->uc_stack.ss_sp = malloc(32000);
 	newtcb->context->uc_stack.ss_size = 32000;
-	newtcb->context->uc_link = &schedule_context;
+	newtcb->context->uc_link = NULL;
 	makecontext(newtcb->context, function , 0);
 
-	if(schedule_created){
-		schedule_created++;
-		schedule_context.uc_stack.ss_sp = &schedule_stack;
-		schedule_context.uc_stack.ss_size = 32000;
-		schedule_context.uc_link = &schedule_context;
-		makecontext(&schedule_context, schedule ,0 );
-		
-		initRunqueue(newtcb->thread_id, newtcb);
-		push(&schedule_context, 0);
-		push(&uctx_main, 1);
-
-		
+	if(!schedule_created){
+		create_schedule_ctx();
+		main_tcb.thread_id = 1;
+		main_tcb.status = READY;
+		main_tcb.context = &main_ctx;
+		runQueue = createQueue;
+		enQueue(runQueue,&main_ctx);
+		enQueue(runQueue,newtcb);
+		swapcontext(&main_ctx, &schedule_ctx);
+	}else{
+		enQueue(runQueue,newtcb);
+		swapcontext((runQueue->front->tcb_ptr),&schedule_ctx);
 	}
-
     return newtcb->thread_id;
 };
 
@@ -96,8 +56,11 @@ void mypthread_exit(void *value_ptr) {
 
 	// YOUR CODE HERE
 };
-
-
+/*	default uc_link for new thread that are being created
+	wil handle the Deallotating
+ */
+void mypthread_no_exit(){
+}
 /* Wait for thread termination */
 int mypthread_join(mypthread_t thread, void **value_ptr) {
 
@@ -163,6 +126,9 @@ static void schedule() {
 
 	// YOUR CODE HERE
 
+
+
+
 // schedule policy
 #ifndef MLFQ
 	// Choose STCF
@@ -191,3 +157,30 @@ static void sched_mlfq() {
 // Feel free to add any other functions you need
 
 // YOUR CODE HERE
+void threadpool(int id, tcb* tb){
+	front = (poolnode*) malloc(sizeof(poolnode));
+	front->previous = front;
+	front->next = front;
+	front->threadid = id;
+}
+
+void push(int id,tcb* tb ){
+	if(front == NULL){ handle_error("queueNULL");}
+	poolnode *newNode = (poolnode*) malloc(sizeof(poolnode));
+	newNode->currentTcb = tb;
+	newNode->threadid = id;
+	newNode->next = front;
+	newNode->previous = front->previous;
+	front->previous->next = newNode;
+	front->previous = newNode;
+}
+
+void pop(){
+	front->previous->next= front->next;
+	front->next->previous = front->previous;
+	poolnode *temp = front;
+	free(front);
+	front = temp;
+}
+
+
