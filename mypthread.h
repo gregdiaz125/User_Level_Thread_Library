@@ -20,6 +20,13 @@
 #include <stdlib.h>
 #include <ucontext.h>
 #include <stdatomic.h>
+typedef enum _boolean{TRUE = 1, FALSE = 0} bool;
+
+typedef enum _thread_status{
+	READY, RUNNING, WAITING, DELAYED, BLOCKED, FINISHED 
+	} thread_status;
+
+static int next_thread_id = 0002;
 
 typedef struct threadControlBlock {
 	/* add important states in a thread control block */
@@ -31,14 +38,7 @@ typedef struct threadControlBlock {
 	// YOUR CODE HERE
 } tcb;
 
-tcb* createNewTCB(){
-	tcb* temp = (tcb*) malloc(sizeof(tcb));
-	temp->thread_id = next_thread_id;
-	next_thread_id++;
-	temp->status= READY;
-	temp->context = (ucontext_t*) malloc(sizeof(ucontext_t));
-	return temp;
-}
+tcb* createNewTCB();
 
 /* mutex struct definition */
 typedef struct mypthread_mutex_t {
@@ -58,47 +58,23 @@ typedef struct _poolnode{
 	int threadid;
 }	poolnode;
 
-
 /* new declarations */
 
 #define handle_error(msg) \ 
 	do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
-typedef enum _boolean{TRUE = 1, FALSE = 0} bool;
-
-typedef enum _thread_status{READY, RUNNING, WAITING, DELAYED, BLOCKED, FINISHED } thread_status;
-
 typedef uint mypthread_t;
 
 void initqueue(int threadid, tcb* tb);
-static void schedule();
 
-static ucontext_t schedule_ctx, main_ctx, no_exit_ctx;
-static tcb main_tcb; 
-char schedule_stack[32000], no_exit_stack[32000];
-bool schedule_created = FALSE;
-bool schedule_space_lock = FALSE;
+void create_schedule_ctx();
 
-void create_schedule_ctx(){
-	schedule_created++;
-	schedule_ctx.uc_stack.ss_sp = &schedule_stack;
-	schedule_ctx.uc_stack.ss_size = 32000;
-	schedule_ctx.uc_link = &schedule_ctx;
-	makecontext(&schedule_ctx, schedule ,0);
-}
-
-void create_no_exit_ctx(){
-	no_exit_ctx.uc_stack.ss_sp = &no_exit_stack;
-	no_exit_ctx.uc_stack.ss_size = 32000;
-	no_exit_ctx.uc_link = &schedule_ctx;
-	makecontext(&no_exit_ctx, mypthread_no_exit,0);
-}
 void mypthread_no_exit();
 
 static poolnode * front;
 /*declaration and functions for the Queue */
+static tcb* runningThread = NULL;
 
-static Queue* runQueue;
 
 typedef struct _QNode{
 	tcb * tcb_ptr;
@@ -109,51 +85,14 @@ typedef struct _Queue{
 	QNode *front, *rear;
 }Queue;
 
-QNode* newNode(tcb* new_ptr){
-	QNode* temp =(QNode*)malloc(sizeof(QNode));
-	temp->tcb_ptr;
-	temp->next = NULL;
-	return temp;
-}
+static Queue runQueue = {.front = NULL, .rear = NULL};
 
-Queue* createQueue(){
-	Queue* q = (Queue*) malloc(sizeof(Queue));
-	q->front = NULL;
-	q->rear = NULL;
-	return q;
-}
-
-void enQueue(Queue* q, tcb * new_ptr){
-	QNode* temp = newNode(new_ptr);
-	if(q->rear == NULL){
-		q->front = temp;
-		q->rear = temp;
-		return;
-	}
-
-	(q->rear)->next = temp;
-	q->rear = temp;
-	if (q->front == NULL)
-        q->rear = NULL;
-}
-
-void deQueue(Queue * q){
-	if (q->front == NULL){
-		return;
-	}
-	QNode* temp = q->front;
-	q->front = q->front->next;
-	if (q->front == NULL){
-        q->rear = NULL;
-	}
-	free(temp);
-}
 /* Function Declarations: */
 QNode* newNode(tcb* new_ptr);
 
 Queue* createQueue();
 
-void deQueue(Queue * q);
+tcb* deQueue(Queue * q);
 
 void enQueue(Queue* q, tcb * new_ptr);
 

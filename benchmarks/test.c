@@ -12,18 +12,28 @@
  * This will not be graded.
  */	
 void test1(){
-	printf("\n hello world \n");
+	printf("\n this is thread 1 \n");
+	return 0;
 }
 
 void test2(int * a){
 	printf("\n the integer is %d\n",a);
+}
+void test3(){
+	printf("\nthis is thread 2\n");
+}
+
+void test4(){
+	printf("\nthis is thread 3\n");
 }
 
 int main(int argc, char **argv) {
 	int a = 5;
 	pthread_t *thread = (pthread_t*) malloc(sizeof(mypthread_t));
 	pthread_create(&thread, NULL, (*test1), NULL);
-	printf("thread created\n");
-
+	pthread_create(&thread, NULL, (*test2), NULL);
+	pthread_create(&thread, NULL, (*test3), NULL);
+	pthread_create(&thread, NULL, (*test4), NULL);
+	printf("main is finished\n");
 	return 0;
 }
