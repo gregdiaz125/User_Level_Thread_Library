@@ -49,7 +49,7 @@ void create_exit_ctx(){
 
 tcb* createnew_tcb(){
 	tcb* temp = (tcb*) malloc(sizeof(tcb));
-	temp->thread_id = atomic_fetch_add(&next_thread_id, 1);
+	temp->thread_id = __sync_fetch_and_add(&next_thread_id, 1);
 	temp->status= READY;
 	temp->waiting_thread = NULL;
 	temp->join_ptr = NULL;
@@ -78,8 +78,6 @@ int mypthread_yield() {
 void mypthread_exit(void *value_ptr) {
 	// Deallocated any dynamic memory created when starting this thread
 	atomic_flag_test_and_set(&e_lock);
-	printf("exit called\n");
-
 	//check to see is the join thread is done?
 	if(running_thread->waiting_thread != NULL){
 		tcb* wainting_thread = running_thread->waiting_thread;
@@ -117,7 +115,6 @@ void mypthread_exit(void *value_ptr) {
 /* Wait for thread termination */
 int mypthread_join(mypthread_t thread, void **value_ptr) {
 	atomic_flag_test_and_set(&e_lock);
-	printf("joined called\n");
 	// wait for a specific thread to terminate
 	// de-allocate any dynamic memory created by the joining thread
 	// YOUR CODE HERE
@@ -207,10 +204,6 @@ static void schedule() {
 	}
 	running_thread = sched_stcf();
 	running_thread->status = RUNNING;
-	// printf("running thread: %d\n", running_thread->thread_id);
-	// printQueue(&runQueue);
-	// printQueue(&thread_pool);
-	// printf("\n");
 	set_timer();
 	setcontext(running_thread->context);
 	printf("the scheduler context finished\n");	
@@ -368,9 +361,10 @@ void set_timer() {
 };
 
 void timer_interrupt(int sig){
-	if(!(e_lock.__val) && running_thread != NULL&& !(s_lock.__val)){
+	if(!(atomic_flag_test_and_set( &e_lock )) && running_thread != NULL&& !(atomic_flag_test_and_set( &s_lock ))){
 		running_thread->time_elapsed++;
-		printf("the timer swapped\n");
+		atomic_flag_clear( &s_lock);
+		atomic_flag_clear( &e_lock );
 		swapcontext(running_thread->context,&schedule_ctx);
 		return;
 	}
