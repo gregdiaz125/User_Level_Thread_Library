@@ -44,17 +44,15 @@ typedef enum _thread_status{
 static int next_thread_id = 0002;
 
 typedef struct threadControlBlock {
-	/* add important states in a thread control block */
 	int thread_id;				// thread Id
 	thread_status status;		// thread status
 	ucontext_t* context;		// thread context
-	uint time_elapsed;
-	void * return_ptr;
-	void ** join_ptr;			// pointer to return value
+	uint time_elapsed;			// a count of quantum
+	void * return_ptr;			// pointer of return value by exit()
+	void ** join_ptr;			// pointer to return value pointer by join()
 	struct threadControlBlock* 	// Thread that has called joined and
-				waiting_thread;	// is waiting for this thead to finish	 
-								
-	// YOUR CODE HERE
+			waiting_thread;		// is waiting for this thead to finish	 
+
 } tcb;
 
 static ucontext_t schedule_ctx, main_ctx, exit_ctx;
@@ -116,7 +114,6 @@ typedef struct _Queue{
 static QNode mainNode = {.tcb_ptr = &main_tcb , .next = NULL};
 
 static Queue runQueue = {.front = NULL, .rear = NULL};
-
 
 static Queue thread_pool= {	.front = &mainNode, 
 							.rear = &mainNode};

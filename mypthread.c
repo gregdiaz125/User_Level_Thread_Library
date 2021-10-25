@@ -12,9 +12,7 @@
 /*
 		--------------- Thread Creation ---------------
 */
-int mypthread_create(mypthread_t * thread, pthread_attr_t * attr,
-                      void *(*function)(void*), void * arg) {
-	
+int mypthread_create(mypthread_t * thread, pthread_attr_t * attr, void *(*function)(void*), void * arg) {
 	tcb* new_tcb = createnew_tcb();
 	if(getcontext(new_tcb->context) == -1){ handle_error("getcontext");}
 	makecontext(new_tcb->context, function , 1, arg);
@@ -89,14 +87,11 @@ void mypthread_exit(void *value_ptr) {
 		free_thread(running_thread);
 		setcontext(&schedule_ctx);
 	}
-
 	if(value_ptr == NULL){
 		//check the status of the running thread;
 		free_thread(running_thread);
 		setcontext(&schedule_ctx);
 	}
-
-	
 	running_thread ->status = FINISHED;
 	running_thread ->return_ptr = value_ptr;
 	atomic_flag_clear(&e_lock);
@@ -104,29 +99,16 @@ void mypthread_exit(void *value_ptr) {
 	
 }
 
-// void mypthread_no_exit(){
-// 	/* do not de allocate anything yet just switch to scheduler*/
-// 	tcb* exit_thread = running_thread;
-// 	running_thread = NULL;
-// 	setcontext(&schedule_ctx);
-// 	printf("thread exit has finished");
-// }
-
 /* Wait for thread termination */
 int mypthread_join(mypthread_t thread, void **value_ptr) {
 	atomic_flag_test_and_set(&e_lock);
-	// wait for a specific thread to terminate
-	// de-allocate any dynamic memory created by the joining thread
-	// YOUR CODE HERE
 	tcb* temp = searchQueue(&thread_pool, thread);
-	//in the case that the thread is not in the thread pool
 	if(temp == NULL){
 		if(value_ptr !=NULL){
 			handle_error("Thread exited but Join is waiting for return");
 			}
 		return 0;
 	}		 
-
 	if(temp->status == FINISHED){
 		if(value_ptr != NULL){
 			*value_ptr = temp->return_ptr;
@@ -134,8 +116,6 @@ int mypthread_join(mypthread_t thread, void **value_ptr) {
 		}
 		return 0;
 	}
-
-	
 	temp->waiting_thread = running_thread;
 	running_thread->join_ptr = value_ptr;
 	running_thread->status = WAITING;
@@ -157,19 +137,14 @@ void free_thread(tcb* exit_thread){
 		
 }
 
-/*
-		--------------- Mutexes ---------------
-*/
-
-/* initialize the mutex lock */
+/*	--------------- Mutexes ---------------*/
+	
 int mypthread_mutex_init(mypthread_mutex_t *mutex,
                           const pthread_mutexattr_t *mutexattr) {
-	//initialize data structures for this mutex
 	atomic_flag lock = ATOMIC_FLAG_INIT;
 	return 0;
 };
 
-/* aquire the mutex lock */
 int mypthread_mutex_lock(mypthread_mutex_t *mutex) {
 	while(atomic_flag_test_and_set(&(mutex->lock))){
 		swapcontext(running_thread->context, &schedule_ctx);
@@ -177,24 +152,20 @@ int mypthread_mutex_lock(mypthread_mutex_t *mutex) {
         return 0;
 };
 
-/* release the mutex lock */
-int mypthread_mutex_unlock(mypthread_mutex_t *mutex) {
 
+int mypthread_mutex_unlock(mypthread_mutex_t *mutex) {
 	atomic_flag_clear( &(mutex->lock) );
 	return 0;
 };
 
-/* destroy the mutex */
+
 int mypthread_mutex_destroy(mypthread_mutex_t *mutex) {
-	// Deallocate dynamic memory created in mypthread_mutex_init
 	return 0;
 };
 
-/*
-		--------------- Scheduler ---------------
-*/
+/*--------------- Scheduler ---------------*/
+		
 static void schedule() {
-
 	stop_timer();
 	if(running_thread != NULL){
 		if(running_thread->status == RUNNING){
@@ -207,8 +178,6 @@ static void schedule() {
 	set_timer();
 	setcontext(running_thread->context);
 	printf("the scheduler context finished\n");	
-
-// schedule policy
 
 
 }
@@ -226,7 +195,6 @@ tcb * sched_stcf() {
 	}
 	removefromQueue(&runQueue, target);
 	return(target);
-
 }
 
 /* Preemptive MLFQ scheduling algorithm */
@@ -235,9 +203,7 @@ tcb * sched_fcfs() {
 }
 
 
-/*
-		--------------- Queue ---------------
-*/
+/*		--------------- Queue ---------------*/
 
 QNode* newNode(tcb* new_ptr){
 	QNode* temp =(QNode*)malloc(sizeof(QNode));
@@ -261,7 +227,6 @@ void enQueue(Queue* q, tcb * new_ptr){
 		q->rear = temp;
 		return;
 	}
-
 	(q->rear)->next = temp;
 	q->rear = temp;
 	if (q->front == NULL)
