@@ -8,10 +8,14 @@
 #define MYTHREAD_T_H
 
 #define _GNU_SOURCE
+#define MLFG
+
+#define POlICY  "sched_fcfs()"
+
 
 /* To use Linux pthread Library in Benchmark, you have to comment the USE_MYTHREAD macro */
 #define USE_MYTHREAD 1
-
+#define THREAD_QUANTUM 5000
 /* include lib header files that you need here: */
 #include <unistd.h>
 #include <sys/syscall.h>
@@ -20,10 +24,21 @@
 #include <stdlib.h>
 #include <ucontext.h>
 #include <stdatomic.h>
+#include <sys/time.h>
+#include <signal.h>
+#include <unistd.h>
+
+
 typedef enum _boolean{TRUE = 1, FALSE = 0} bool;
 
+#define handle_error(msg)\
+	do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
+
+typedef uint mypthread_t;
+
 typedef enum _thread_status{
-	READY, RUNNING, WAITING, DELAYED, BLOCKED, FINISHED 
+	READY, RUNNING, WAITING, FINISHED
 	} thread_status;
 
 static int next_thread_id = 0002;
@@ -32,48 +47,61 @@ typedef struct threadControlBlock {
 	/* add important states in a thread control block */
 	int thread_id;				// thread Id
 	thread_status status;		// thread status
-	ucontext_t * context;		// thread context
-	void * return_ptr;			// pointer to return value
-
+	ucontext_t* context;		// thread context
+	uint time_elapsed;
+	void * return_ptr;
+	void ** join_ptr;			// pointer to return value
+	struct threadControlBlock* 	// Thread that has called joined and
+				waiting_thread;	// is waiting for this thead to finish	 
+								
 	// YOUR CODE HERE
 } tcb;
 
-tcb* createNewTCB();
+static ucontext_t schedule_ctx, main_ctx, exit_ctx;
 
-/* mutex struct definition */
-typedef struct mypthread_mutex_t {
-	/* add something here */
+static tcb main_tcb = {	.thread_id = 1, .status= RUNNING, .time_elapsed = 0,
+						.join_ptr =NULL ,.return_ptr = NULL, .context = &main_ctx}; 
 
-	// YOUR CODE HERE
-} mypthread_mutex_t;
+static char schedule_stack[32000], no_exit_stack[32000];
 
-/* define your data structures here: */
-// Feel free to add your own auxiliary data structures (linked list or queue etc...)
+static bool schedule_created = FALSE;
 
-// YOUR CODE HERE
-typedef struct _poolnode{
-	struct _poolnode* previous;
-	struct _poolnode* next;
-	tcb * currentTcb;
-	int threadid;
-}	poolnode;
+static bool schedule_space_lock = FALSE;
 
-/* new declarations */
+static tcb* running_thread = &main_tcb;
 
-#define handle_error(msg) \ 
-	do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
-typedef uint mypthread_t;
-
-void initqueue(int threadid, tcb* tb);
+tcb* createnew_tcb();
 
 void create_schedule_ctx();
 
+void free_thread(tcb *exit_ptr);
+
 void mypthread_no_exit();
 
-static poolnode * front;
+void create_exit_ctx();
+
+
+/* mutex struct definition */
+
+typedef struct mypthread_mutex_t {
+	atomic_flag lock;
+} mypthread_mutex_t;
+
+atomic_flag s_lock ;
+atomic_flag e_lock;
+
+void set_timer();
+
+void stop_timer();
+
+void timer_interrupt(int sig);
+
+void init_sigact();
+
+
+/* new declarations */
 /*declaration and functions for the Queue */
-static tcb* runningThread = NULL;
 
 
 typedef struct _QNode{
@@ -85,9 +113,22 @@ typedef struct _Queue{
 	QNode *front, *rear;
 }Queue;
 
+static QNode mainNode = {.tcb_ptr = &main_tcb , .next = NULL};
+
 static Queue runQueue = {.front = NULL, .rear = NULL};
 
+
+static Queue thread_pool= {	.front = &mainNode, 
+							.rear = &mainNode};
+
+
 /* Function Declarations: */
+static void schedule();
+
+tcb * sched_stcf();
+
+tcb * sched_fcfs();
+
 QNode* newNode(tcb* new_ptr);
 
 Queue* createQueue();
@@ -96,6 +137,11 @@ tcb* deQueue(Queue * q);
 
 void enQueue(Queue* q, tcb * new_ptr);
 
+tcb* searchQueue(Queue* q, int id);
+
+void printQueue(Queue * q);
+
+void removefromQueue(Queue *q, tcb* target);
 /* create a new thread */
 int mypthread_create(mypthread_t * thread, pthread_attr_t * attr, void
     *(*function)(void*), void * arg);

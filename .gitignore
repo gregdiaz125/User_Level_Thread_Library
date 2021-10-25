@@ -1,0 +1,5 @@
+./benchmark/external_cal
+./benchmark/parallel_cal
+./benchmark/vector_multiply
+./benchmark/test
+./benchmark/record/

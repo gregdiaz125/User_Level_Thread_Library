@@ -1,6 +1,9 @@
 {
     "files.associations": {
         "*.py": "python",
-        "ucontext.h": "c"
+        "ucontext.h": "c",
+        "stdio.h": "c",
+        "unistd.h": "c",
+        "syscall.h": "c"
     }
 }

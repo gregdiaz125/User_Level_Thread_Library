@@ -21,5 +21,7 @@ else
 	echo "no such scheduling algorithm"
 endif
 
+play:
+	$(CC) play.c -g -o play
 clean:
-	rm -rf testfile *.o *.a
+	rm -rf testfile *.o *.a play
