@@ -152,7 +152,6 @@ int mypthread_mutex_lock(mypthread_mutex_t *mutex) {
         return 0;
 };
 
-
 int mypthread_mutex_unlock(mypthread_mutex_t *mutex) {
 	atomic_flag_clear( &(mutex->lock) );
 	return 0;
